@@ -1,0 +1,446 @@
+// Inventory & Khata — Prisma schema
+// PostgreSQL + user-scoped businesses
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth (NextAuth / Auth.js compatible) ─────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String? // credentials provider
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  businesses Business[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Business (tenant) ─────────────────────────────────────────────────────
+
+model Business {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  phone     String?
+  address   String?
+  currency  String   @default("INR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  customers            Customer[]
+  suppliers            Supplier[]
+  products             Product[]
+  inventoryTransactions InventoryTransaction[]
+  customerLedger       CustomerLedgerEntry[]
+  supplierLedger       SupplierLedgerEntry[]
+  cashbookEntries      CashbookEntry[]
+  sales                Sale[]
+  purchases            Purchase[]
+  reminders            Reminder[]
+  attachments          Attachment[]
+  reportLogs           ReportLog[]
+}
+
+// ─── Parties ───────────────────────────────────────────────────────────────
+
+model Customer {
+  id        String   @id @default(cuid())
+  businessId String
+  name      String
+  mobile    String?
+  email     String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  ledger    CustomerLedgerEntry[]
+  sales     Sale[]
+  reminders Reminder[]
+
+  @@index([businessId])
+  @@index([businessId, name])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  businessId String
+  name      String
+  mobile    String?
+  email     String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  products  Product[]
+  ledger    SupplierLedgerEntry[]
+  purchases Purchase[]
+  reminders Reminder[]
+
+  @@index([businessId])
+}
+
+// ─── Inventory ─────────────────────────────────────────────────────────────
+
+model Product {
+  id                 String   @id @default(cuid())
+  businessId         String
+  supplierId         String?
+  name               String
+  sku                String?
+  category           String?
+  purchasePrice      Decimal  @default(0) @db.Decimal(14, 2)
+  sellingPrice       Decimal  @default(0) @db.Decimal(14, 2)
+  quantity           Decimal  @default(0) @db.Decimal(14, 4)
+  lowStockThreshold  Decimal  @default(0) @db.Decimal(14, 4)
+  unit               String   @default("pcs")
+  barcode            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  inventoryTransactions InventoryTransaction[]
+  saleItems             SaleItem[]
+  purchaseItems         PurchaseItem[]
+  reminders             Reminder[]
+
+  @@index([businessId])
+  @@index([businessId, sku])
+}
+
+enum InventoryTxType {
+  PURCHASE
+  SALE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  OPENING
+}
+
+model InventoryTransaction {
+  id             String          @id @default(cuid())
+  businessId     String
+  productId      String
+  quantityDelta  Decimal         @db.Decimal(14, 4)
+  type           InventoryTxType
+  referenceType  String? // Sale, Purchase, Manual
+  referenceId    String?
+  note           String?         @db.Text
+  createdAt      DateTime        @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, productId])
+  @@index([referenceType, referenceId])
+}
+
+// ─── Customer Khata ──────────────────────────────────────────────────────────
+// Balance = receivable (positive = customer owes you — "you will get")
+
+model CustomerLedgerEntry {
+  id             String   @id @default(cuid())
+  businessId     String
+  customerId     String
+  occurredAt     DateTime @default(now())
+  /// Charges / credit sale — increases receivable ("You Gave" side in many UIs)
+  amountYouGave  Decimal  @default(0) @db.Decimal(14, 2)
+  /// Payments received — decreases receivable ("You Got")
+  amountYouGot   Decimal  @default(0) @db.Decimal(14, 2)
+  balanceAfter   Decimal  @db.Decimal(14, 2)
+  note           String?  @db.Text
+  source         LedgerSource @default(MANUAL)
+  referenceType  String?
+  referenceId    String?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  attachments Attachment[]
+
+  @@index([customerId, occurredAt])
+  @@index([businessId])
+}
+
+enum LedgerSource {
+  MANUAL
+  SALE
+  PAYMENT
+  OPENING
+  ADJUSTMENT
+}
+
+// ─── Supplier Khata ──────────────────────────────────────────────────────────
+// Balance = payable (positive = you owe supplier)
+
+model SupplierLedgerEntry {
+  id               String   @id @default(cuid())
+  businessId       String
+  supplierId       String
+  occurredAt       DateTime @default(now())
+  /// Purchase on credit — increases payable
+  purchaseAmount   Decimal  @default(0) @db.Decimal(14, 2)
+  /// Payment to supplier — decreases payable
+  paymentAmount    Decimal  @default(0) @db.Decimal(14, 2)
+  balanceAfter     Decimal  @db.Decimal(14, 2)
+  note             String?  @db.Text
+  source           LedgerSource @default(MANUAL)
+  referenceType    String?
+  referenceId      String?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  attachments Attachment[]
+
+  @@index([supplierId, occurredAt])
+  @@index([businessId])
+}
+
+// ─── Cashbook ────────────────────────────────────────────────────────────────
+
+enum CashFlowType {
+  IN
+  OUT
+}
+
+model CashbookEntry {
+  id          String       @id @default(cuid())
+  businessId  String
+  occurredAt  DateTime     @default(now())
+  type        CashFlowType
+  amount      Decimal      @db.Decimal(14, 2)
+  note        String?      @db.Text
+  category    String?
+  createdAt   DateTime     @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  attachments Attachment[]
+
+  @@index([businessId, occurredAt])
+}
+
+// ─── Sales & Purchases ───────────────────────────────────────────────────────
+
+enum InvoicePaymentStatus {
+  PAID
+  PARTIAL
+  DUE
+}
+
+model Sale {
+  id            String               @id @default(cuid())
+  businessId    String
+  customerId    String?
+  invoiceNumber String
+  occurredAt    DateTime             @default(now())
+  subtotal      Decimal              @db.Decimal(14, 2)
+  discount      Decimal              @default(0) @db.Decimal(14, 2)
+  tax           Decimal              @default(0) @db.Decimal(14, 2)
+  total         Decimal              @db.Decimal(14, 2)
+  paidAmount    Decimal              @default(0) @db.Decimal(14, 2)
+  status        InvoicePaymentStatus @default(DUE)
+  notes         String?              @db.Text
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  items SaleItem[]
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId, occurredAt])
+}
+
+model SaleItem {
+  id         String  @id @default(cuid())
+  saleId     String
+  productId  String
+  quantity   Decimal @db.Decimal(14, 4)
+  rate       Decimal @db.Decimal(14, 2)
+  discount   Decimal @default(0) @db.Decimal(14, 2)
+  tax        Decimal @default(0) @db.Decimal(14, 2)
+  lineTotal  Decimal @db.Decimal(14, 2)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+}
+
+model Purchase {
+  id            String               @id @default(cuid())
+  businessId    String
+  supplierId    String?
+  invoiceNumber String
+  occurredAt    DateTime             @default(now())
+  subtotal      Decimal              @db.Decimal(14, 2)
+  discount      Decimal              @default(0) @db.Decimal(14, 2)
+  tax           Decimal              @default(0) @db.Decimal(14, 2)
+  total         Decimal              @db.Decimal(14, 2)
+  paidAmount    Decimal              @default(0) @db.Decimal(14, 2)
+  status        InvoicePaymentStatus @default(DUE)
+  notes         String?              @db.Text
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  items PurchaseItem[]
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId, occurredAt])
+}
+
+model PurchaseItem {
+  id         String  @id @default(cuid())
+  purchaseId String
+  productId  String
+  quantity   Decimal @db.Decimal(14, 4)
+  rate       Decimal @db.Decimal(14, 2)
+  discount   Decimal @default(0) @db.Decimal(14, 2)
+  tax        Decimal @default(0) @db.Decimal(14, 2)
+  lineTotal  Decimal @db.Decimal(14, 2)
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+}
+
+// ─── Reminders ───────────────────────────────────────────────────────────────
+
+enum ReminderEntity {
+  CUSTOMER
+  SUPPLIER
+  STOCK
+  GENERIC
+}
+
+enum ReminderStatus {
+  PENDING
+  DONE
+  DISMISSED
+}
+
+model Reminder {
+  id          String         @id @default(cuid())
+  businessId  String
+  entity      ReminderEntity @default(GENERIC)
+  customerId  String?
+  supplierId  String?
+  productId   String?
+  title       String
+  message     String?        @db.Text
+  dueAt       DateTime
+  status      ReminderStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, dueAt])
+  @@index([businessId, status])
+}
+
+// ─── Attachments (receipts, signatures, PDFs) — linked to ledger or cashbook row ─
+
+model Attachment {
+  id         String   @id @default(cuid())
+  businessId String
+  storageKey String // relative path under uploads/
+  fileName   String
+  mimeType   String?
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  customerLedgerEntryId String?
+  customerLedgerEntry   CustomerLedgerEntry? @relation(fields: [customerLedgerEntryId], references: [id], onDelete: Cascade)
+
+  supplierLedgerEntryId String?
+  supplierLedgerEntry   SupplierLedgerEntry? @relation(fields: [supplierLedgerEntryId], references: [id], onDelete: Cascade)
+
+  cashbookEntryId String?
+  cashbookEntry   CashbookEntry? @relation(fields: [cashbookEntryId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([customerLedgerEntryId])
+  @@index([supplierLedgerEntryId])
+  @@index([cashbookEntryId])
+}
+
+// ─── Report audit ─────────────────────────────────────────────────────────────
+
+model ReportLog {
+  id          String   @id @default(cuid())
+  businessId  String
+  reportType  String
+  filters     Json?
+  generatedAt DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, generatedAt])
+}

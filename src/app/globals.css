@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f4ff;
+  --foreground: #1a1433;
+  --card: #ffffff;
+  --card-foreground: #1a1433;
+  --popover: #ffffff;
+  --popover-foreground: #1a1433;
+  --primary: #5b21b6;
+  --primary-foreground: #faf5ff;
+  --secondary: #ede9fe;
+  --secondary-foreground: #4c1d95;
+  --muted: #f0ebff;
+  --muted-foreground: #5b5675;
+  --accent: #ede9fe;
+  --accent-foreground: #4c1d95;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+  --border: #e6e0ff;
+  --input: #e6e0ff;
+  --ring: #7c3aed;
+  --radius: 0.85rem;
+  --success: #059669;
+  --danger: #e11d48;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f0a1a;
+    --foreground: #f4f0ff;
+    --card: #161026;
+    --card-foreground: #f4f0ff;
+    --popover: #161026;
+    --popover-foreground: #f4f0ff;
+    --primary: #a78bfa;
+    --primary-foreground: #1e1033;
+    --secondary: #2a1f45;
+    --secondary-foreground: #ede9fe;
+    --muted: #1f1633;
+    --muted-foreground: #b4a8d4;
+    --accent: #2a1f45;
+    --accent-foreground: #ede9fe;
+    --destructive: #f87171;
+    --destructive-foreground: #1f0a0a;
+    --border: #2d2448;
+    --input: #2d2448;
+    --ring: #a78bfa;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Safe area for mobile sticky bars */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
