@@ -3,7 +3,13 @@ export const runtime = "nodejs";
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
-const PUBLIC = ["/login", "/register", "/api/auth"];
+const PUBLIC = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/api/auth",
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;

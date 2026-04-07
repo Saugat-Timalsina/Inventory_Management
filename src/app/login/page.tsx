@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import { LoginForm } from "@/components/auth/login-form";
+import { AuthPageShell } from "@/components/layout/auth-page-shell";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-violet-100 to-background p-4 dark:from-violet-950/40">
+    <AuthPageShell>
       <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
         <LoginForm />
       </Suspense>
-    </div>
+    </AuthPageShell>
   );
 }

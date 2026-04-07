@@ -52,28 +52,26 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f0a1a;
-    --foreground: #f4f0ff;
-    --card: #161026;
-    --card-foreground: #f4f0ff;
-    --popover: #161026;
-    --popover-foreground: #f4f0ff;
-    --primary: #a78bfa;
-    --primary-foreground: #1e1033;
-    --secondary: #2a1f45;
-    --secondary-foreground: #ede9fe;
-    --muted: #1f1633;
-    --muted-foreground: #b4a8d4;
-    --accent: #2a1f45;
-    --accent-foreground: #ede9fe;
-    --destructive: #f87171;
-    --destructive-foreground: #1f0a0a;
-    --border: #2d2448;
-    --input: #2d2448;
-    --ring: #a78bfa;
-  }
+.dark {
+  --background: #0f0a1a;
+  --foreground: #f4f0ff;
+  --card: #161026;
+  --card-foreground: #f4f0ff;
+  --popover: #161026;
+  --popover-foreground: #f4f0ff;
+  --primary: #a78bfa;
+  --primary-foreground: #1e1033;
+  --secondary: #2a1f45;
+  --secondary-foreground: #ede9fe;
+  --muted: #1f1633;
+  --muted-foreground: #b4a8d4;
+  --accent: #2a1f45;
+  --accent-foreground: #ede9fe;
+  --destructive: #f87171;
+  --destructive-foreground: #1f0a0a;
+  --border: #2d2448;
+  --input: #2d2448;
+  --ring: #a78bfa;
 }
 
 body {

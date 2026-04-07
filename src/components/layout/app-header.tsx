@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 const nav = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -44,15 +45,18 @@ export function AppHeader({ businessName }: { businessName: string }) {
             {businessName}
           </p>
         </Link>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="hidden border-white/20 bg-white/10 text-white hover:bg-white/20 sm:inline-flex"
-          onClick={() => signOut({ callbackUrl: "/login" })}
-        >
-          Sign out
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <ThemeToggle variant="header" />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="hidden border-white/20 bg-white/10 text-white hover:bg-white/20 sm:inline-flex"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            Sign out
+          </Button>
+        </div>
       </div>
       <nav
         className="no-scrollbar flex gap-1 overflow-x-auto px-2 pb-2 md:px-4"

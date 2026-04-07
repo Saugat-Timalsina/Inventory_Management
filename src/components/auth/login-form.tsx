@@ -19,6 +19,7 @@ export function LoginForm() {
   const sp = useSearchParams();
   const callbackUrl = sp.get("callbackUrl") ?? "/dashboard";
   const registered = sp.get("registered");
+  const resetOk = sp.get("reset");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -51,8 +52,13 @@ export function LoginForm() {
           Khata, stock, and invoices — one place for your shop.
         </CardDescription>
         {registered ? (
-          <p className="text-sm text-emerald-600">
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">
             Account created. You can sign in now.
+          </p>
+        ) : null}
+        {resetOk ? (
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">
+            Password updated. Sign in with your new password.
           </p>
         ) : null}
       </CardHeader>
@@ -69,7 +75,15 @@ export function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-primary underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <Input
               id="password"
               name="password"
